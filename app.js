@@ -4,55 +4,75 @@ var path = require("path");
 var server = require('http').createServer(app);
 var io = require('socket.io').listen(server);
 
-var users = [];
+var users = {};
 var connections = [];
 
 io.sockets.on('connection',function(socket){
 	connections.push(socket);
 	console.log('Connected : %s sockets Connected',connections.length);
 	
-	//io.sockets.emit('join left group',{joinleft:connections.length});
-	
 	socket.on('disconnect',function(data){
-		if(users.indexOf(socket.username)!==-1){
-			users.splice(users.indexOf(socket.username),1);
-			updateusernames();
-		}
-		connections.splice(connections.indexOf(socket),1);
-		io.sockets.emit('join left group',{joinleft:connections.length});
+		delete users[socket.username];
+		connections.push(socket);
 		console.log('Disconected : %s sockets Connected',connections.length);
 	});
 	
 	socket.on('login user', function(data,calback){
-		if(users.indexOf(data)==-1){
+		if(data in users){
+			calback(false);
+		}else{
 			calback(true);
 			socket.username = data;
-			users.push(socket.username);
+			users[socket.username]=socket;
 			updateusernames();
-		}else{
-			calback(false);
-			//io.sockets.emit('login fail',{msg:data});
 		}
-		
 	});
 	
 	socket.on('log out', function(data,calback){
 		calback(true);
-		if(users.indexOf(socket.username)!==-1){
-			users.splice(users.indexOf(socket.username),1);
+		if(data in users){
+			delete users[socket.username];
 			updateusernames();
 		}
 	});
 	
-	socket.on('send message', function(data){
-		io.sockets.emit('new message',{
-			msg:data,
-			user:socket.username
-		});
+	socket.on('send message', function(data,calback){
+		var msg = data.trim();
+		if(msg.substr(0,3)=='/w '){
+			msg = msg.substr(3);
+			ind = msg.indexOf(' ');
+			if(ind!==-1){
+				var name = msg.substring(0,ind)
+				var msg = msg.substring(ind+1);
+				if(name in users){
+					users[name].emit('privatemsg',{
+						msg:msg,
+						user:socket.username
+					});
+					users[socket.username].emit('privatemsg',{
+						msg:msg,
+						user:socket.username
+					});
+				}else{
+					calback('Err : please enter a valid user');
+				}
+			}else{
+				calback('Err : please enter a message for user');
+			}
+		}else{
+			io.sockets.emit('new message',{
+				msg:msg,
+				user:socket.username
+			});
+		}
 	});
 	
 	function updateusernames(){
-		io.sockets.emit('new user',users);
+		var retArr = [
+			Object.keys(users),
+			socket.username
+		];
+		io.sockets.emit('new user',retArr);
 	}
 	
 });
