@@ -8,15 +8,6 @@ var users = {};
 var connections = [];
 
 io.sockets.on('connection',function(socket){
-	connections.push(socket);
-	console.log('Connected : %s sockets Connected',connections.length);
-	
-	socket.on('disconnect',function(data){
-		delete users[socket.username];
-		connections.push(socket);
-		console.log('Disconected : %s sockets Connected',connections.length);
-	});
-	
 	socket.on('login user', function(data,calback){
 		if(data in users){
 			calback(false);
@@ -68,12 +59,17 @@ io.sockets.on('connection',function(socket){
 	});
 	
 	function updateusernames(){
-		var retArr = [
-			Object.keys(users),
-			socket.username
-		];
-		io.sockets.emit('new user',retArr);
+		io.sockets.emit('new user',Object.keys(users));
 	}
+	
+	//************************connect disconnect block*********************************//
+	connections.push(socket);
+	console.log('Connected : %s sockets Connected',connections.length);
+	socket.on('disconnect',function(data){
+		delete users[socket.username];
+		connections.splice(connections.indexOf(socket),1);
+		console.log('Disconected : %s sockets Connected',connections.length);
+	});
 	
 });
 

@@ -30,6 +30,7 @@ $(function(){
 		socket.emit('login user',$username.val(),function(data){
 			if(data){
 				$loginIno.html('<strong>Login With : </strong>'+$username.val());
+				$("#loginInoId").val($username.val());
 				$userArea.hide();
 				$msgArea.show();
 				$username.val('');
@@ -47,11 +48,17 @@ $(function(){
 	});
 	
 	$msgForm.submit(function(e){
-		if(!$message.val()){
+		var sendMsg = "";
+		if($("#sltUser").is(":checked")){
+			sendMsg = $("#sltUser").val()+$message.val();
+		}else{
+			sendMsg = $message.val()
+		}
+		if(!sendMsg){
 			return false;
 		}
 		e.preventDefault();
-		socket.emit('send message',$message.val(),function(data){
+		socket.emit('send message',sendMsg,function(data){
 			$chat.append('<li class="list-group-item">'+data+'</i></span></li>');
 			$chat.animate({scrollTop: height}, 500);
 			height += $chat.height();
@@ -72,13 +79,8 @@ $(function(){
 	
 	socket.on('new user',function(data){
 		var html = '';
-		var users = data[0],user = data[1];
-		for(i in users){
-			if(users[i]==user){
-				html +='<li class="list-group-item">'+users[i]+'</li>';
-			}else{
-				html +='<li class="list-group-item" onclick="sendprivate(\''+users[i]+'\');">'+users[i]+'</li>';
-			}
+		for(i in data){
+			html +='<li class="list-group-item" onclick="sendprivate(\''+data[i]+'\');">'+data[i]+'</li>';
 		}
 		$users.html(html);
 	});
@@ -95,11 +97,25 @@ $(function(){
 		height += $chat.height();
 	});
 	
+	$("#sltUser").click(function(){
+		if(!$("#sltUser").is(":checked")){
+			$("#sltUser").val("");
+			$("#sltUser").prop("disabled",true);
+			$("#sltUserArea").html("");
+		}
+	});
+	
 })
 
 
 function sendprivate(selected){
-	$("#message").val('/w '+ selected+" :");
+	if(selected==$("#loginInoId").val()){
+		return false;
+	}
+	$("#sltUserArea").html(selected);
+	$("#sltUser").val("/w "+selected+" ");
+	$("#sltUser").prop('disabled',false);
+	$("#sltUser").prop('checked',true);
 }
 
 //construct date time
